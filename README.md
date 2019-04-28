@@ -46,6 +46,29 @@ Ruby is a dynamic and strongly typed languge. You can always declare a variable 
 `=begin` will start a block comment and `=end` will end a block comment
 
 
+#### Available globals
+|  globals |
+|----------|
+|  $layout |
+|  $ffi    |
+|  $game   |
+|  $dragon |
+|  $repl   |
+|  $stdout |
+|  $stderr |
+|  $/      |
+|  $stdin  |
+|  $1      |
+|  $2      |
+|  $3      |
+|  $4      |
+|  $5      |
+|  $6      |
+|  $7      |
+|  $8      |
+|  $9      |
+
+
 #### Rubydragon
 There already exists documentation on basic usage on the [Dragonruby website](https://dragonruby.itch.io/dragonruby-gtk) but I have some notes that still might come in handy. The function you interface with the most is tick.
 ```
